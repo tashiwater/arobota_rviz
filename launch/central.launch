@@ -13,10 +13,6 @@
         <param name="output_topic" value="/allPose" />
     </node>
 
-    <node pkg="joy" type="joy_node" name="joy_node" output="log" respawn="true" respawn_delay="0">
-        <param name="dev" value="/dev/input/js2"/>    
-    </node>
-
+    <node pkg="joy" type="joy_node" name="joy_node" output="log" respawn="true" respawn_delay="0"/>
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_file)" />
-
 </launch>
