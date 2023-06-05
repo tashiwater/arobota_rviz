@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="number" default="" />
+    <group ns="agent10$(arg number)">
+        <param name="agentID" value="$(arg number)" />
+        <node pkg="arobota_rviz" type="formation_control.py" name="agent$(arg number)" output="screen"/>
+        
+        <rosparam file="$(find arobota_rviz)/config/agent10$(arg number).yaml" command="load" ns="" />
+        <include file="$(find arobota_rviz)/launch/rigid_body_simulation.launch">
+            <arg name="number" value="$(arg number)" />
+        </include>
+
+    </group>
+
+</launch>

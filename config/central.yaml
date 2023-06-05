@@ -1,0 +1,3 @@
+pose_collector:
+  clock: 100
+rigid_body_simulation_clock: 100

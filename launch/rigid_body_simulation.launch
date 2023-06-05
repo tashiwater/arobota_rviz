@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+
+    <arg name="number" default="1" />
+    <node pkg="arobota_rviz" name="rigid_body_motion" type="rigid_body_motion.py" output="log" />
+    <node pkg="arobota_rviz" type="posestamped2tf.py" name="posestamped2tf" output="log" respawn="false" respawn_delay="0">
+        <param name="posestamped" value="posestamped" />
+        <param name="tfname" value="agent10$(arg number)/base_link" />
+    </node>
+</launch>

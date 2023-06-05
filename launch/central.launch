@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="agentNum" default="" />
+    <arg name="rviz_file" default="$(find arobota_rviz)/config/sim_true.rviz" />
+
+    <rosparam file="$(find arobota_rviz)/config/central.yaml" command="load" ns="" />
+    <param name="agentNum" value="$(arg agentNum)" />
+
+    <include file="$(find arobota_rviz)/launch/description.launch" />
+    <!-- This node publish all pose -->
+    <node name="poseCollector" pkg="arobota_rviz" type="pose_collector.py" output="log">
+        <param name="posestampedTopic" value="posestamped" />
+        <param name="output_topic" value="/allPose" />
+    </node>
+
+    <node pkg="joy" type="joy_node" name="joy_node" output="log" respawn="true" respawn_delay="0">
+        <param name="dev" value="/dev/input/js2"/>    
+    </node>
+
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_file)" />
+
+</launch>
