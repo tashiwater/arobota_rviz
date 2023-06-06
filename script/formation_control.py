@@ -20,9 +20,13 @@ class AgentManagerExample:
         self.finalvelo= Twist()
         self._my_zeta = np.zeros((1,3))
         self._zetas = np.zeros((3,3))
+        self.positions = np.zeros((3,3))
+        self._orientations = np.zeros((3,4))
+
 
         self._pub_zeta = rospy.Publisher("zeta", PoseStamped, queue_size=1)
         rospy.Subscriber("/allPose", PoseArray, self.poseArrayCallback, queue_size=1)
+        rospy.Subscriber("/all_zeta", PoseArray, self.zetaArrayCallback, queue_size=1)
         self.pubvel = rospy.Publisher('cmd_input',Twist, queue_size=10)
         rospy.Subscriber('/joy',Joy,self.joy_callback) #joy
 
@@ -38,11 +42,29 @@ class AgentManagerExample:
         self._uh.linear.y = joy_uy/2 #(-1,1)
         self._uh.angular.z = joy_omega/2 #(-1,1)
 
+    def zetaArrayCallback(self, msg):
+        arraynum = len(msg.poses)
+        for i in range(arraynum):
+            pos = [
+                msg.poses[i].position.x,
+                msg.poses[i].position.y,
+                msg.poses[i].position.z,
+                ]
+            quat = [
+                msg.poses[i].orientation.x,
+                msg.poses[i].orientation.y,
+                msg.poses[i].orientation.z,
+                msg.poses[i].orientation.w
+                ]
+            angle = tf.transformations.euler_from_quaternion(quat)
+            angle = angle[2]  # angle about the z-axis
+            self._zetas[i]=pos
+            
+
+        
     def poseArrayCallback(self, msg):
         arraynum = len(msg.poses)
-        self.positions = np.zeros((3,3))
-        self.zetas = np.zeros((3,1))
-
+        
         for i in range(arraynum):
             pos = [
                 msg.poses[i].position.x,
@@ -59,7 +81,7 @@ class AgentManagerExample:
             angle = tf.transformations.euler_from_quaternion(quat)
             angle = angle[2]  # angle about the z-axis
             self.positions[i]=pos
-            self.zetas[i]= angle
+            self._orientations[i] = quat
         
             # print(self.positions)
             
@@ -93,16 +115,20 @@ class AgentManagerExample:
         zeta1 = self._zetas[0]
         zeta2 = self._zetas[1]
         zeta3 = self._zetas[2]
+        kI = 0.02
         if self.myid==1:
-            self.PIvelocity = 0.2* ((zeta1-zeta2)+(zeta1-zeta3))
+            self.PIvelocity = kI* ((zeta1-zeta2)+(zeta1-zeta3))
         if self.myid==2:
-            self.PIvelocity = 0.2 *((zeta2-zeta1)+(zeta2-zeta3))
+            self.PIvelocity = kI*((zeta2-zeta1)+(zeta2-zeta3))
         if self.myid==3:
-            self.PIvelocity = 0.2 * ((zeta3-zeta1)+(zeta3-zeta2))
+            self.PIvelocity = kI* ((zeta3-zeta1)+(zeta3-zeta2))
         self.velocity_x, self.velocity_y = float(self.velocity[0]+self.PIvelocity[0]+self._uh.linear.x),float(self.velocity[1]+self.PIvelocity[1]+self._uh.linear.y)
-        self.finalvelo.linear.x = self.velocity_x
-        self.finalvelo.linear.y = self.velocity_y
         self.finalvelo.angular.z = self._uh.angular.z
+
+        my_orientation = self._orientations[self.myid-1]
+        body_vel = self.world2body(self.velocity_x, self.velocity_y, 0, my_orientation)
+        self.finalvelo.linear.x, self.finalvelo.linear.y, self.finalvelo.linear.z = body_vel[0], body_vel[1], body_vel[2]
+        
         self.pubvel.publish(self.finalvelo)
 
     def publish_zeta(self, zeta):
@@ -119,6 +145,13 @@ class AgentManagerExample:
                 self.main_control()
                 self.rate.sleep()
 
+    def world2body(self, world_ux, world_uy, world_uz, orientation):
+        quat = np.array(orientation)
+        rotm_ = tf.transformations.quaternion_matrix(quat)
+        rotm = rotm_[0:3, 0:3]
+        body_vel = np.dot(rotm.transpose(), np.vstack([world_ux, world_uy, world_uz]))
+        return body_vel
+    
 if __name__=='__main__':
     try:
         agent = AgentManagerExample()
